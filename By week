@@ -1,0 +1,65 @@
+library(readxl)
+library(DescTools)
+require(forecast)
+library(xlsx)
+library('zoo')
+require(dplyr)
+require(broom)
+HHC<-read_excel('C:/Users/Tung.Nguyen/Documents/Work_Unilever/Transformation project/Machine Learning for Forecast/Raw new/Old/HHC test - by week.xlsx', sheet = "Raw_Actual")
+head(HHC)
+#create df forecast result to store data later on
+forecast_result <-data.frame( "forecast"=c(0) , "SKU"=c(0), "method" = c(0))
+forecast_result
+
+#Input horizon
+horizon <- 104
+
+
+
+#Create function for seasonal linear
+Forecast.SL <- function(ts_raw, horizon){
+    #fit model
+    FC_SL <- tslm(ts_raw ~ season + trend)
+    FC.Mod <- forecast(FC_SL, h=horizon)
+    result <- as.data.frame(FC.Mod)
+    plot(FC.Mod, main = colnames(raw[,2]))
+    dev.new()
+    summary(FC.Mod)
+    #create data frame result
+    xxx <- data.frame("date"=result[,0],"forecast" = result[,1], "SKU" = colnames(raw[,2]), "method" = "SLN")
+    return (xxx)
+}
+
+#Create function for HoltWinter
+Forecast.HW <- function(ts_raw, horizon){
+    #fit model
+    FC_HW <- HoltWinters(ts_raw)
+    FC.Mod <- forecast(FC_HW, h=horizon)
+    result <- as.data.frame(FC.Mod)
+    plot(FC.Mod, main = colnames(raw[,2]))
+
+    #create data frame result
+    xxx <- data.frame("date"=result[,0],"forecast" = result[,1], "SKU" = colnames(raw[,2]), "method" = "HW")
+        
+    return (xxx)
+    #print(forecast_result)
+}
+
+
+
+#Go through each SKU
+for (i in 2:ncol(HHC)){
+raw <- HHC[,c(1,i)]
+
+    raw2 = as.vector(t(raw[,2]))
+    ts_r <- ts(raw2, start = c(2016,7,1), frequency = 52)
+    ts_r <- tsclean(ts_r,replace.missing = TRUE, lambda = NULL)
+    plot(ts_r)
+    final <- Forecast.SL(ts_r, horizon)
+
+forecast_result<-rbind(forecast_result,final)
+print("done 1 SKU")
+}
+
+#write.xlsx(forecast_result,file = 'C:/Users/Tung.Nguyen/Documents/Work_Unilever/Transformation project/Machine Learning for Forecast/result_byweek_Omo.xlsx')
+#print("successfull")
