@@ -1,0 +1,90 @@
+library(readxl)
+library(DescTools)
+library(forecast)
+library(xlsx)
+library('zoo')
+library(dplyr)
+library(broom)
+#Read Excel file
+HHC<-read_excel('C:/Users/Tung.Nguyen/Documents/Work_Unilever/Transformation project/Machine Learning for Forecast/Raw new/HHC_Final Clean.xlsx', sheet = "Cleaned_HHC_Final")
+
+#head(HHC)
+#create df forecast result to store data later on
+forecast_result <-data.frame( "forecast"=c(0) , "SKU"=c(0), "method" = c(0))
+forecast_result
+
+#Input horizon
+horizon <- 24
+
+#Create function for HoltWinter
+Forecast.HW <- function(ts_raw, horizon, a , b, g, s){
+    #fit model
+    FC_HW <- HoltWinters(ts_raw, alpha = a, beta = g, gamma = g, seasonal = s)
+    FC.Mod <- forecast(FC_HW, h=horizon)
+    result <- as.data.frame(FC.Mod)
+    plot(FC.Mod, main = colnames(raw[,2]))
+
+    #create data frame result
+    xxx <- data.frame("date"=result[,0],"forecast" = result[,1], "SKU" = colnames(raw[,2]), "method" = "HW")        
+    return (xxx)
+
+}
+
+#Create function for seasonal linear
+Forecast.SL <- function(ts_raw, horizon){
+    #fit model
+    FC_SL <- tslm(ts_raw ~ season + trend)
+    FC.Mod <- forecast(FC_SL, h=horizon)
+    result <- as.data.frame(FC.Mod)
+    plot(FC.Mod, main = colnames(raw[,2]))
+    #summary(FC.Mod)
+    #create data frame result
+    xxx <- data.frame("date"=result[,0],"forecast" = result[,1], "SKU" = colnames(raw[,2]), "method" = "SLN")
+    return (xxx)
+}
+
+#Create function for arima
+Forecast.arima <- function(ts, horizon){
+    #fit model
+    FC_arima <- auto.arima(ts_raw)
+    FC.Mod <- forecast(FC_arima, h=horizon)
+    result <- as.data.frame(FC.Mod)
+    #plot(FC.Mod, main = colnames(raw[,2]))
+    
+    #create data frame result
+    xxx <- data.frame("date"=result[,0],"forecast" = result[,1], "SKU" = colnames(raw[,2]), "method" = "ARIMA")
+    return (xxx)
+}
+
+
+#Go through each SKU
+
+raw <- HHC[,c(1,2)]
+
+        
+#check number of period    
+X <- rowSums(!is.na(raw[,2]))    
+N_period <- sum(X)
+N_row <- nrow(raw)
+
+if (N_period == N_row){
+    ts_raw <- ts(raw[,2],start=c(2015,1,1), frequency = 12)
+}else if ((N_row - 12) <= N_period && N_period < N_row ) {
+    raw2 <- filter(raw, raw$Date > "2015-12-29")
+    ts_raw <- ts(raw2[,2],start=c(2016,1,1), frequency = 12)
+}else if ((N_row - 24) <= N_period && N_period < (N_row -12) ) {
+    raw3 <- filter(raw, raw$Date > "2016-12-29")
+    ts_raw <- ts(raw3[,2],start=c(2017,1,1), frequency = 12)
+}else if (N_period < (N_row - 24)){
+    raw4 <- filter(raw, raw$Date > "2017-12-29")
+    ts_raw <- ts(raw4[,2],start=c(2018,1,1), frequency = 12)
+}
+
+#Manual input
+final <- Forecast.HW(ts_raw, horizon, 0.5 , 0.5 , 0.5, "additive")
+final <- Forecast.SL(ts_raw, horizon)
+
+
+
+write.xlsx(forecast_result,file = 'C:/Users/Tung.Nguyen/Documents/Work_Unilever/Transformation project/Machine Learning for Forecast/result_HHC_final.xlsx')
+print("successfull")
