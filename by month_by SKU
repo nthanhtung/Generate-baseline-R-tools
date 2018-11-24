@@ -85,6 +85,7 @@ final <- Forecast.HW(ts_raw, horizon, 0.5 , 0.5 , 0.5, "additive")
 final <- Forecast.SL(ts_raw, horizon)
 
 
-
+#Print result
+forecast_result<-rbind(forecast_result,final)
 write.xlsx(forecast_result,file = 'C:/Users/Tung.Nguyen/Documents/Work_Unilever/Transformation project/Machine Learning for Forecast/result_HHC_final.xlsx')
 print("successfull")
