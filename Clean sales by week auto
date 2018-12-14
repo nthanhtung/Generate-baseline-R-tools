@@ -1,0 +1,71 @@
+library(readxl)
+library(DescTools)
+library(forecast)
+library(xlsx)
+library('zoo')
+library(dplyr)
+library(broom)
+#Read Excel file
+HHC<-read_excel('C:/Users/Tung.Nguyen/Documents/Work_Unilever/Transformation project/Machine Learning for Forecast/Raw new/HHC test.xlsx', sheet = "Raw_Actual")
+
+#head(HHC)
+#create df forecast result to store data later on
+forecast_result <-data.frame( "Clean"=c(0) , "Date"=c(0), "SKU" = c(0))
+forecast_result
+
+#Input horizon
+horizon <- 104
+
+#convert ts clean to dataframe
+
+Convert <- function(ts_raw){
+    ts_r <- tsclean(ts_raw,replace.missing = TRUE, lambda = NULL)
+    final <- data.frame("Clean" =as.matrix(ts_r), "Date" = time(ts_r), "SKU" = colnames(raw[,2]))
+}
+
+
+#Go through each SKU
+for (i in 2:ncol(HHC)){
+raw <- HHC[,c(1,i)]
+
+        
+#check number of period    
+X <- rowSums(!is.na(raw[,2]))    
+N_period <- sum(X)
+N_row <- nrow(raw)
+    
+
+if (N_period == N_row){
+    raw_c = as.vector(t(raw[,2]))
+    ts_raw <- ts(raw_c,start=c(2015,1,1), frequency = 52)
+    final <- Convert(ts_raw)
+    
+} 
+    else if ((N_row - 52) <= N_period && N_period < N_row ) {
+    raw2 <- filter(raw, raw$Date > "2015-12-31")
+    
+    raw_c2 = as.vector(t(raw2[,2]))
+    ts_raw2 <- ts(raw_c2,start=c(2016,1,1), frequency = 52)
+    final <- Convert(ts_raw2)    
+} 
+    else if ((N_row - 104) <= N_period && N_period < (N_row -52) ) {
+    raw3 <- filter(raw, raw$Date > "2016-12-31")
+
+    raw_c3 = as.vector(t(raw3[,2]))
+    ts_raw3 <- ts(raw_c3,start=c(2017,1,1), frequency = 52)
+    final <- Convert(ts_raw3) 
+}
+    else if (N_period < (N_row - 102)){
+    raw4 <- filter(raw, raw$Date > "2017-12-31")
+    
+    raw_c4 = as.vector(t(raw4[,2]))
+    ts_raw4 <- ts(raw_c4,start=c(2018,1,1), frequency = 52)
+    final <- Convert(ts_raw4)    
+}
+
+forecast_result<-rbind(forecast_result,final)
+print("done 1 SKU")
+}
+
+write.xlsx(forecast_result,file = 'C:/Users/Tung.Nguyen/Documents/Work_Unilever/Transformation project/Machine Learning for Forecast/HHC_Clean_sale_R_new.xlsx')
+print("successfull")
